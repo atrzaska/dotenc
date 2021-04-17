@@ -1,19 +1,20 @@
 package main
 
 import (
-	"crypto/aes"
-	"crypto/cipher"
-	"crypto/md5"
-	"crypto/rand"
+	"bytes"
 	"encoding/hex"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"os"
 	"strings"
+
+	"github.com/Shopify/ejson/crypto"
 )
 
-const PASSWORD_FILE = ".dotenc"
+const KEY_MAP_FILE = ".dotenc"
+const PUBLIC_KEY_PREFIX = "# public_key: "
+const KEY_MAP_SEPARATOR = ": "
+const PUBLIC_KEY_SIZE = 32 * 2
 
 func check(e error) {
 	if e != nil {
@@ -21,50 +22,28 @@ func check(e error) {
 	}
 }
 
-func createHash(key string) string {
-	hasher := md5.New()
-	hasher.Write([]byte(key))
-	return hex.EncodeToString(hasher.Sum(nil))
-}
-
-func encrypt(data []byte, passphrase string) []byte {
-	block, _ := aes.NewCipher([]byte(createHash(passphrase)))
-	gcm, err := cipher.NewGCM(block)
-	if err != nil {
-		panic(err.Error())
-	}
-	nonce := make([]byte, gcm.NonceSize())
-	if _, err = io.ReadFull(rand.Reader, nonce); err != nil {
-		panic(err.Error())
-	}
-	ciphertext := gcm.Seal(nonce, nonce, data, nil)
-	return ciphertext
-}
-
-func decrypt(data []byte, passphrase string) []byte {
-	key := []byte(createHash(passphrase))
-	block, err := aes.NewCipher(key)
-	if err != nil {
-		panic(err.Error())
-	}
-	gcm, err := cipher.NewGCM(block)
-	if err != nil {
-		panic(err.Error())
-	}
-	nonceSize := gcm.NonceSize()
-	nonce, ciphertext := data[:nonceSize], data[nonceSize:]
-	plaintext, err := gcm.Open(nil, nonce, ciphertext, nil)
-	if err != nil {
-		panic(err.Error())
-	}
-	return plaintext
-}
-
-func readPassword() string {
-	passwordData, err := ioutil.ReadFile(PASSWORD_FILE)
+func readKeyMap() map[string]string {
+	data, err := ioutil.ReadFile(KEY_MAP_FILE)
+	dataContent := string(data)
 	check(err)
-	password := string(passwordData)
-	return strings.ReplaceAll(password, "\n", "")
+
+	results := make(map[string]string)
+	lines := strings.Split(dataContent, "\n")
+
+	for _, line := range lines {
+		isValid := strings.Contains(line, KEY_MAP_SEPARATOR)
+
+		if !isValid {
+			continue
+		}
+
+		split := strings.Split(line, KEY_MAP_SEPARATOR)
+		public := split[0]
+		private := split[1]
+		results[public] = private
+	}
+
+	return results
 }
 
 func readEnv() string {
@@ -105,20 +84,70 @@ func splitEnvLine(line string) (string, string) {
 	return id, value
 }
 
-func encryptValue(value string) string {
-	password := readPassword()
-	encryptedValue := encrypt([]byte(value), password)
+func readPublicKey(path string) string {
+	lines := readEnvFile(path)
+	header := lines[0]
 
-	return hex.EncodeToString(encryptedValue)
+	if !strings.HasPrefix(header, PUBLIC_KEY_PREFIX) {
+		panic("Public key comment not found at top of the env file " + path)
+	}
+
+	publicKey := strings.Replace(header, PUBLIC_KEY_PREFIX, "", 1)
+
+	if len(publicKey) != PUBLIC_KEY_SIZE {
+		panic("Public key has wrong length, expected 32 bytes")
+	}
+
+	return publicKey
 }
 
-func decryptValue(value string) string {
-	password := readPassword()
-	decodedValue, err := hex.DecodeString(value)
+func convertHexToBytes(hexString string) [32]byte {
+	decodedString, err := hex.DecodeString(hexString)
 	check(err)
-	decryptedValue := decrypt(decodedValue, password)
 
-	return string(decryptedValue)
+	var out [32]byte
+	copy(out[:], decodedString[:32])
+	return out
+}
+
+func writeFile(writePath string, buffer bytes.Buffer) {
+	outFile, err := os.Create(writePath)
+	check(err)
+	defer outFile.Close()
+	outFile.Write([]byte(buffer.String()))
+}
+
+func createKeypair(readPath string) crypto.Keypair {
+	pubkey := readPublicKey(readPath)
+	keyMap := readKeyMap()
+	privkey := keyMap[pubkey]
+
+	myKP := crypto.Keypair{
+		Public:  convertHexToBytes(pubkey),
+		Private: convertHexToBytes(privkey),
+	}
+
+	return myKP
+}
+
+func createEncrypter(readPath string) *crypto.Encrypter {
+	pubkey := readPublicKey(readPath)
+	myKP := createKeypair(readPath)
+
+	return myKP.Encrypter(convertHexToBytes(pubkey))
+}
+
+func createDecrypter(readPath string) *crypto.Decrypter {
+	myKP := createKeypair(readPath)
+	return myKP.Decrypter()
+}
+
+func isParsable(line string) bool {
+	return strings.Contains(line, "=") && !strings.HasPrefix(line, "#")
+}
+
+func isNotLastLine(i int, lines []string) bool {
+	return i < len(lines)-1
 }
 
 func decryptEnv() {
@@ -126,26 +155,29 @@ func decryptEnv() {
 	readPath := fmt.Sprintf(".env.%s.enc", env)
 	writePath := fmt.Sprintf(".env.%s", env)
 	lines := readEnvFile(readPath)
-	outFile, err := os.Create(writePath)
-	check(err)
+	var buffer bytes.Buffer
+	decrypter := createDecrypter(readPath)
 
-	defer outFile.Close()
+	for i, line := range lines {
+		var outLine string
 
-	for _, line := range lines {
-		isValid := strings.Contains(line, "=")
-
-		if !isValid {
-			continue
+		if isParsable(line) {
+			key, value := splitEnvLine(line)
+			decryptedValue, err := decrypter.Decrypt([]byte(value))
+			check(err)
+			outLine = key + "=" + string(decryptedValue)
+		} else {
+			outLine = line
 		}
 
-		id, value := splitEnvLine(line)
+		buffer.WriteString(outLine)
 
-		decryptedValueString := decryptValue(value)
-
-		outLine := id + "=" + decryptedValueString + "\n"
-
-		outFile.Write([]byte(outLine))
+		if isNotLastLine(i, lines) {
+			buffer.WriteString("\n")
+		}
 	}
+
+	writeFile(writePath, buffer)
 }
 
 func encryptEnv() {
@@ -153,26 +185,29 @@ func encryptEnv() {
 	readPath := fmt.Sprintf(".env.%s", env)
 	writePath := fmt.Sprintf(".env.%s.enc", env)
 	lines := readEnvFile(readPath)
-	outFile, err := os.Create(writePath)
-	check(err)
+	var buffer bytes.Buffer
+	encrypter := createEncrypter(readPath)
 
-	defer outFile.Close()
+	for i, line := range lines {
+		var outLine string
 
-	for _, line := range lines {
-		isValid := strings.Contains(line, "=")
-
-		if !isValid {
-			continue
+		if isParsable(line) {
+			key, value := splitEnvLine(line)
+			encryptedValue, err := encrypter.Encrypt([]byte(value))
+			check(err)
+			outLine = key + "=" + string(encryptedValue)
+		} else {
+			outLine = line
 		}
 
-		id, value := splitEnvLine(line)
+		buffer.WriteString(outLine)
 
-		encryptedValueString := encryptValue(value)
-
-		outLine := id + "=" + encryptedValueString + "\n"
-
-		outFile.Write([]byte(outLine))
+		if isNotLastLine(i, lines) {
+			buffer.WriteString("\n")
+		}
 	}
+
+	writeFile(writePath, buffer)
 }
 
 func main() {
