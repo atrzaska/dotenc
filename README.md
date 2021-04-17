@@ -60,6 +60,10 @@ Make sure that you have your go bin folder in your path. Add following line to y
 
     export PATH="~/go/bin:$PATH"
 
+## Building locally
+
+    go build
+
 ## Exports
 
 To provide copy paste support from shell scripts, export keywords will be ignored, when reading dotenv files.
