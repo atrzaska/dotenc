@@ -42,6 +42,7 @@ Example content of decrypted `.env.production` file:
 ## Encryption
 
 Dotenc uses AES to encrypt env values and MD5 for hashing the password.
+
 Encryption key is read from a `.dotenc` file from the current directory.
 That file should never be commited to your repository.
 
