@@ -29,6 +29,16 @@ Example content of generated encrypted env file `.env.production.enc`:
     FOO=c82426d23fbc40dfdce1a0c53a888b161f4b1807122ed4938ab0650a525489
     export ENV=c67fd814ff05ffb546dba21ec787465f092cd9e5f8a384ec2de6de00e19a497372ddbc717b9e
 
+Now that the files are encrypted, you can decrypt them:
+
+    dotenc decrypt production
+    cat .env.production
+
+Example content of decrypted `.env.production` file:
+
+    FOO=bar
+    export ENV=production
+
 ## Encryption
 
 Dotenc uses AES to encrypt env values and MD5 for hashing the password.
