@@ -77,7 +77,11 @@ func readOperation() string {
 	switch operation {
 	case "decrypt":
 		return "decrypt"
+	case "d":
+		return "decrypt"
 	case "encrypt":
+		return "encrypt"
+	case "e":
 		return "encrypt"
 
 	default:

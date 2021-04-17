@@ -22,6 +22,7 @@ Add your `.dotenc` encryption key to `.gitignore` so that it is not commited to 
 Encrypt your secret env file:
 
     dotenc encrypt production
+    dotenc e production
     cat .env.production.enc
 
 Example content of generated encrypted env file `.env.production.enc`:
@@ -32,6 +33,7 @@ Example content of generated encrypted env file `.env.production.enc`:
 Now that the files are encrypted, you can decrypt them:
 
     dotenc decrypt production
+    dotenc d production
     cat .env.production
 
 Example content of decrypted `.env.production` file:
