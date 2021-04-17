@@ -2,6 +2,8 @@
 
 Dotenc is a Go application to encrypt your dotenv files so that they can be securely shared in git repositories.
 
+Inspired by `ejson` ruby gem https://github.com/Shopify/ejson.
+
 ## Examples:
 
 Add your secret env file:
@@ -29,6 +31,32 @@ Dotenc uses AES to encrypt env values and MD5 for hashing the password.
 
 ## Requirements
 
-- Developed with `go version go1.16.3 darwin/amd64`
+- Developed with Go version go1.16.3 darwin/amd64
 
 ## Installation instructions
+
+This program can be installed easily if you have the go language installed on your system.
+
+    go get github.com/atrzaska/dotenc
+
+Make sure that you have your go bin folder in your path. Add following line to your shell RC file.
+
+    export PATH="~/go/bin:$PATH"
+
+## Exports
+
+To provide copy paste support from shell scripts, export keywords will be ignored, when reading dotenv files.
+
+With that said, both versions of following environment variable definition will work just fine:
+
+Dotenv syntax
+
+    NODE_ENV=development
+
+Shell export syntax
+
+    export NODE_ENV=development
+
+## Licence
+
+MIT
