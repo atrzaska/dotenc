@@ -94,7 +94,7 @@ func readEnvFile(envFile string) []string {
 }
 
 func splitEnvLine(line string) (string, string) {
-	splitResult := strings.Split(line, "=")
+	splitResult := strings.SplitN(line, "=", 2)
 	id := splitResult[0]
 	value := splitResult[1]
 
