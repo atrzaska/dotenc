@@ -15,6 +15,10 @@ Initialize your encryption key with:
 
     pwgen -N 1 -s 100 > .dotenc
 
+Add your `.dotenc` encryption key to `.gitignore` so that it is not commited to repository.
+
+    echo ".dotenc" >> .gitignore
+
 Encrypt your secret env file:
 
     dotenc encrypt production
@@ -28,6 +32,8 @@ Example content of generated encrypted env file `.env.production.enc`:
 ## Encryption
 
 Dotenc uses AES to encrypt env values and MD5 for hashing the password.
+Encryption key is read from a `.dotenc` file from the current directory.
+That file should never be commited to your repository.
 
 ## Requirements
 
