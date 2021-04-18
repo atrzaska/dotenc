@@ -256,7 +256,7 @@ func generateKeyPair() {
 }
 
 func printHelp() {
-	fmt.Println("Dotenc is a small library to manage encrypted secrets using asymetric encryption")
+	fmt.Println("Dotenc is a small library to manage encrypted secrets using asymetric encryption.")
 	fmt.Println("")
 	fmt.Println("Usage:")
 	fmt.Println("  dotenc [command]")

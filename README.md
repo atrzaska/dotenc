@@ -12,7 +12,7 @@ dotenc works on dotenv files while ejson works on json files.
 
 If you run dotenc without any arguments it will print help message with the usage instructions.
 
-    Dotenc is a small library to manage encrypted secrets using asymetric encryption
+    Dotenc is a small library to manage encrypted secrets using asymetric encryption.
 
     Usage:
       dotenc [command]
@@ -56,7 +56,7 @@ Add private key to `.dotenc` file. Example:
 
     851d1baf941bfe98a54c87790a74ea1a87b068c8d535ca7969f229cd996e2d7c: e2e4274ca2dc5386213adc2fc62d87a2a5c38afa4ab949a49726d7ebcf0c75dc
 
-Add your secret env file:
+Add secrets to your env file:
 
     echo "FOO=bar" >> .env.production
     echo "export ENV=production" >> .env.production
