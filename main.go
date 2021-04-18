@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"os/exec"
 	"strings"
 
 	"github.com/Shopify/ejson/crypto"
@@ -47,13 +48,27 @@ func readKeyMap() map[string]string {
 }
 
 func readEnv() string {
+	if len(os.Args) < 3 {
+		panic("Please specify wich environment should be used")
+	}
+
 	return os.Args[2]
 }
 
 func readOperation() string {
+	if len(os.Args) == 1 {
+		return "help"
+	}
+
 	operation := os.Args[1]
 
 	switch operation {
+	case "exec":
+		return "exec"
+	case "generate":
+		return "generate"
+	case "g":
+		return "generate"
 	case "decrypt":
 		return "decrypt"
 	case "d":
@@ -68,8 +83,9 @@ func readOperation() string {
 	}
 }
 
-func readEnvFile(envFile string) []string {
-	envData, err := ioutil.ReadFile(envFile)
+func readEnvFile() []string {
+	envPath := getEnvFilePath()
+	envData, err := ioutil.ReadFile(envPath)
 	check(err)
 	envContent := string(envData)
 
@@ -85,7 +101,7 @@ func splitEnvLine(line string) (string, string) {
 }
 
 func readPublicKey(path string) string {
-	lines := readEnvFile(path)
+	lines := readEnvFile()
 	header := lines[0]
 
 	if !strings.HasPrefix(header, PUBLIC_KEY_PREFIX) {
@@ -110,8 +126,9 @@ func convertHexToBytes(hexString string) [32]byte {
 	return out
 }
 
-func writeFile(writePath string, buffer bytes.Buffer) {
-	outFile, err := os.Create(writePath)
+func writeFile(buffer bytes.Buffer) {
+	envPath := getEnvFilePath()
+	outFile, err := os.Create(envPath)
 	check(err)
 	defer outFile.Close()
 	outFile.Write([]byte(buffer.String()))
@@ -122,24 +139,26 @@ func createKeypair(readPath string) crypto.Keypair {
 	keyMap := readKeyMap()
 	privkey := keyMap[pubkey]
 
-	myKP := crypto.Keypair{
+	keyPair := crypto.Keypair{
 		Public:  convertHexToBytes(pubkey),
 		Private: convertHexToBytes(privkey),
 	}
 
-	return myKP
+	return keyPair
 }
 
-func createEncrypter(readPath string) *crypto.Encrypter {
-	pubkey := readPublicKey(readPath)
-	myKP := createKeypair(readPath)
+func createEncrypter() *crypto.Encrypter {
+	envPath := getEnvFilePath()
+	pubkey := readPublicKey(envPath)
+	keyPair := createKeypair(envPath)
 
-	return myKP.Encrypter(convertHexToBytes(pubkey))
+	return keyPair.Encrypter(convertHexToBytes(pubkey))
 }
 
-func createDecrypter(readPath string) *crypto.Decrypter {
-	myKP := createKeypair(readPath)
-	return myKP.Decrypter()
+func createDecrypter() *crypto.Decrypter {
+	envPath := getEnvFilePath()
+	keyPair := createKeypair(envPath)
+	return keyPair.Decrypter()
 }
 
 func isParsable(line string) bool {
@@ -150,73 +169,163 @@ func isNotLastLine(i int, lines []string) bool {
 	return i < len(lines)-1
 }
 
-func decryptEnv() {
+func getEnvFilePath() string {
 	env := readEnv()
-	readPath := fmt.Sprintf(".env.%s.enc", env)
-	writePath := fmt.Sprintf(".env.%s", env)
-	lines := readEnvFile(readPath)
+	return fmt.Sprintf(".env.%s", env)
+}
+
+func decryptEnvToString() string {
 	var buffer bytes.Buffer
-	decrypter := createDecrypter(readPath)
+
+	lines := readEnvFile()
+	decrypter := createDecrypter()
 
 	for i, line := range lines {
-		var outLine string
+		var result string
 
 		if isParsable(line) {
 			key, value := splitEnvLine(line)
 			decryptedValue, err := decrypter.Decrypt([]byte(value))
 			check(err)
-			outLine = key + "=" + string(decryptedValue)
+			result = key + "=" + string(decryptedValue)
 		} else {
-			outLine = line
+			result = line
 		}
 
-		buffer.WriteString(outLine)
+		buffer.WriteString(result)
 
 		if isNotLastLine(i, lines) {
 			buffer.WriteString("\n")
 		}
 	}
 
-	writeFile(writePath, buffer)
+	return buffer.String()
+}
+
+func decryptEnv() {
+	result := decryptEnvToString()
+	fmt.Print(result)
+	//writeFile(buffer)
 }
 
 func encryptEnv() {
-	env := readEnv()
-	readPath := fmt.Sprintf(".env.%s", env)
-	writePath := fmt.Sprintf(".env.%s.enc", env)
-	lines := readEnvFile(readPath)
 	var buffer bytes.Buffer
-	encrypter := createEncrypter(readPath)
+
+	lines := readEnvFile()
+	encrypter := createEncrypter()
 
 	for i, line := range lines {
-		var outLine string
+		var result string
 
 		if isParsable(line) {
 			key, value := splitEnvLine(line)
 			encryptedValue, err := encrypter.Encrypt([]byte(value))
 			check(err)
-			outLine = key + "=" + string(encryptedValue)
+			result = key + "=" + string(encryptedValue)
 		} else {
-			outLine = line
+			result = line
 		}
 
-		buffer.WriteString(outLine)
+		buffer.WriteString(result)
 
 		if isNotLastLine(i, lines) {
 			buffer.WriteString("\n")
 		}
 	}
 
-	writeFile(writePath, buffer)
+	writeFile(buffer)
+}
+
+func generateKeyPair() {
+	var kp crypto.Keypair
+
+	err := kp.Generate()
+	check(err)
+
+	fmt.Println("Public key: " + kp.PublicString())
+	fmt.Println("Private key: " + kp.PrivateString())
+	fmt.Println()
+	fmt.Println("Add this line on top of your dotfile:")
+	fmt.Println("# public_key: " + kp.PublicString())
+	fmt.Println()
+	fmt.Println("Add this line to your .dotenc file:")
+	fmt.Println(kp.PublicString() + ": " + kp.PrivateString())
+	fmt.Println()
+  fmt.Println("Remember to ignore .dotenc in your version control system! You can use following command:")
+	fmt.Println("echo \".dotenc\" >> .gitignore")
+}
+
+func printHelp() {
+	fmt.Println("Dotenc is a small library to manage encrypted secrets using asymetric encryption")
+	fmt.Println("")
+	fmt.Println("Usage:")
+	fmt.Println("  dotenc [command]")
+	fmt.Println("")
+	fmt.Println("Available Commands:")
+	fmt.Println("  encrypt [env]          Encrypt given environment file .env.[env]")
+	fmt.Println("  e [env]                Shortcut for encrypt")
+	fmt.Println("  decrypt [env]          Decrypt given environment file .env.[env] and print to STDOUT")
+	fmt.Println("  d [env]                Shortcut for decrypt")
+	fmt.Println("  generate               Generate new public and private key")
+	fmt.Println("  g                      Shortcut for generate")
+	fmt.Println("  exec [env] [command]   Decrypt and load env variables from .env.[env] file and run program [command]")
+}
+
+func stripExport(key string) string {
+	return strings.ReplaceAll(key, "export ", "")
+}
+
+func loadEnv() {
+	decryptedEnv := decryptEnvToString()
+	lines := strings.Split(decryptedEnv, "\n")
+
+	for _, line := range lines {
+		if !isParsable(line) {
+			continue
+		}
+
+		key, value := splitEnvLine(line)
+		key = stripExport(key)
+		os.Setenv(key, value)
+	}
+}
+
+func getExecCommand() string {
+	if len(os.Args) < 4 {
+		panic("Please specify command to run")
+	}
+
+	return strings.Join(os.Args[3:], " ")
+}
+
+func execCommand() int {
+	command := getExecCommand()
+	loadEnv()
+	cmd := exec.Command("sh", "-c", command)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	err := cmd.Run()
+
+	if exitError, ok := err.(*exec.ExitError); ok {
+		return exitError.ExitCode()
+	}
+
+	return 0
 }
 
 func main() {
 	operation := readOperation()
 
 	switch operation {
+	case "help":
+		printHelp()
+	case "generate":
+		generateKeyPair()
 	case "decrypt":
 		decryptEnv()
 	case "encrypt":
 		encryptEnv()
+	case "exec":
+		os.Exit(execCommand())
 	}
 }
