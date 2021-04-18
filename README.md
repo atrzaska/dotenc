@@ -78,8 +78,7 @@ Encrypt your secret env file:
 
 Example content of generated encrypted env file `.env.production`:
 
-    # public_key: 851d1baf941bfe98a54c87790a74ea1a87b068c8d535ca7969f229cd996e2d7c
-
+    _PUBLIC_KEY=851d1baf941bfe98a54c87790a74ea1a87b068c8d535ca7969f229cd996e2d7c
     FOO=EJ[1:z4M3hY5e+xyfuxVCqG2rGvawmwBimvkJRpi5JYyLD0o=:I7P2CGyBPkS3dP7Sh/3VYFg2Aa0T6VdX:oqEhBaNMA54bDhOotPqVsqBH1g==]
     export ENV=EJ[1:z4M3hY5e+xyfuxVCqG2rGvawmwBimvkJRpi5JYyLD0o=:fPfzBgXMlFo48KxIS4wpAembxuVUgPjA:L+3ZdxinpRixIn5IsTtDkc6AwaFu6SoVX14=]
 
@@ -91,14 +90,14 @@ Now that the files are encrypted, you can decrypt them to STDOUT:
 
 Example content of decrypted `.env.production` file:
 
-    # public_key: 851d1baf941bfe98a54c87790a74ea1a87b068c8d535ca7969f229cd996e2d7c
-
+    _PUBLIC_KEY=851d1baf941bfe98a54c87790a74ea1a87b068c8d535ca7969f229cd996e2d7c
     FOO=bar
     export ENV=production
 
 ### Loading decrypted env vars into shell
 
 To load decrypted env vars into shell you can just eval decrypt output.
+Warning: Only exported env vars will be loaded!
 
     eval $(dotenc d production)
 
