@@ -275,6 +275,7 @@ func execCommand() int {
 	command := getExecCommand()
 	loadEnv()
 	cmd := exec.Command("sh", "-c", command)
+  cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	err := cmd.Run()
