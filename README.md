@@ -1,9 +1,11 @@
 # Welcome to Dotenc
 
-Dotenc is a Go application to encrypt your dotenv files
+Dotenc is a application to encrypt your dotenv files
 so that they can be securely shared in git repositories.
 
-Inspired by `ejson` ruby gem https://github.com/Shopify/ejson.
+Dotenc is written in Go language.
+
+Inspired by `ejson` library https://github.com/Shopify/ejson
 
 The main difference between ejson and dotenc is that
 dotenc works on dotenv files while ejson works on json files.
@@ -72,7 +74,6 @@ Add your `.dotenc` encryption key to `.gitignore` so that it is not commited to 
 Encrypt your secret env file:
 
     dotenc encrypt production
-    dotenc e production
     cat .env.production
 
 Example content of generated encrypted env file `.env.production`:
@@ -87,7 +88,6 @@ Example content of generated encrypted env file `.env.production`:
 Now that the files are encrypted, you can decrypt them to STDOUT:
 
     dotenc decrypt production
-    dotenc d production
 
 Example content of decrypted `.env.production` file:
 
@@ -106,8 +106,12 @@ Dotenc also provides a way to decrypt and load env files to execute any command.
 
 Dotenc uses ejson crypto https://github.com/Shopify/ejson/blob/master/crypto/crypto.go to encrypt env values.
 
-Encryption key is read from a `.dotenc` file from the current directory.
+Encryption secret key is read from a `.dotenc` file from the current directory.
 That file should never be commited to your repository.
+
+Ejson crypto package uses asymetric encryption.
+It means anyone with public key can encrypt secrets.
+Only people with private key can decrypt the secret.
 
 ## Requirements
 

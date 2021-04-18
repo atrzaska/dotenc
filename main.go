@@ -55,34 +55,6 @@ func readEnv() string {
 	return os.Args[2]
 }
 
-func readOperation() string {
-	if len(os.Args) == 1 {
-		return "help"
-	}
-
-	operation := os.Args[1]
-
-	switch operation {
-	case "exec":
-		return "exec"
-	case "generate":
-		return "generate"
-	case "g":
-		return "generate"
-	case "decrypt":
-		return "decrypt"
-	case "d":
-		return "decrypt"
-	case "encrypt":
-		return "encrypt"
-	case "e":
-		return "encrypt"
-
-	default:
-		panic("Invalid operation: " + operation)
-	}
-}
-
 func readEnvFile() []string {
 	envPath := getEnvFilePath()
 	envData, err := ioutil.ReadFile(envPath)
@@ -100,12 +72,12 @@ func splitEnvLine(line string) (string, string) {
 	return id, value
 }
 
-func readPublicKey(path string) string {
+func readPublicKey() string {
 	lines := readEnvFile()
 	header := lines[0]
 
 	if !strings.HasPrefix(header, PUBLIC_KEY_PREFIX) {
-		panic("Public key comment not found at top of the env file " + path)
+		panic("Public key comment not found at top of the env file ")
 	}
 
 	publicKey := strings.Replace(header, PUBLIC_KEY_PREFIX, "", 1)
@@ -134,8 +106,29 @@ func writeFile(buffer bytes.Buffer) {
 	outFile.Write([]byte(buffer.String()))
 }
 
-func createKeypair(readPath string) crypto.Keypair {
-	pubkey := readPublicKey(readPath)
+func isParsable(line string) bool {
+	return strings.Contains(line, "=") && !strings.HasPrefix(line, "#")
+}
+
+func isNotLastLine(i int, lines []string) bool {
+	return i < len(lines)-1
+}
+
+func getEnvFilePath() string {
+	env := readEnv()
+	return fmt.Sprintf(".env.%s", env)
+}
+
+func getExecCommand() string {
+	if len(os.Args) < 4 {
+		panic("Please specify command to run")
+	}
+
+	return strings.Join(os.Args[3:], " ")
+}
+
+func createKeypair() crypto.Keypair {
+	pubkey := readPublicKey()
 	keyMap := readKeyMap()
 	privkey := keyMap[pubkey]
 
@@ -148,30 +141,17 @@ func createKeypair(readPath string) crypto.Keypair {
 }
 
 func createEncrypter() *crypto.Encrypter {
-	envPath := getEnvFilePath()
-	pubkey := readPublicKey(envPath)
-	keyPair := createKeypair(envPath)
+	pubkey := readPublicKey()
+	var keyPair crypto.Keypair
+	err := keyPair.Generate()
+	check(err)
 
 	return keyPair.Encrypter(convertHexToBytes(pubkey))
 }
 
 func createDecrypter() *crypto.Decrypter {
-	envPath := getEnvFilePath()
-	keyPair := createKeypair(envPath)
+	keyPair := createKeypair()
 	return keyPair.Decrypter()
-}
-
-func isParsable(line string) bool {
-	return strings.Contains(line, "=") && !strings.HasPrefix(line, "#")
-}
-
-func isNotLastLine(i int, lines []string) bool {
-	return i < len(lines)-1
-}
-
-func getEnvFilePath() string {
-	env := readEnv()
-	return fmt.Sprintf(".env.%s", env)
 }
 
 func decryptEnvToString() string {
@@ -205,7 +185,6 @@ func decryptEnvToString() string {
 func decryptEnv() {
 	result := decryptEnvToString()
 	fmt.Print(result)
-	//writeFile(buffer)
 }
 
 func encryptEnv() {
@@ -251,7 +230,7 @@ func generateKeyPair() {
 	fmt.Println("Add this line to your .dotenc file:")
 	fmt.Println(kp.PublicString() + ": " + kp.PrivateString())
 	fmt.Println()
-  fmt.Println("Remember to ignore .dotenc in your version control system! You can use following command:")
+	fmt.Println("Remember to ignore .dotenc in your version control system! You can use following command:")
 	fmt.Println("echo \".dotenc\" >> .gitignore")
 }
 
@@ -290,14 +269,6 @@ func loadEnv() {
 	}
 }
 
-func getExecCommand() string {
-	if len(os.Args) < 4 {
-		panic("Please specify command to run")
-	}
-
-	return strings.Join(os.Args[3:], " ")
-}
-
 func execCommand() int {
 	command := getExecCommand()
 	loadEnv()
@@ -311,6 +282,34 @@ func execCommand() int {
 	}
 
 	return 0
+}
+
+func readOperation() string {
+	if len(os.Args) == 1 {
+		return "help"
+	}
+
+	operation := os.Args[1]
+
+	switch operation {
+	case "exec":
+		return "exec"
+	case "generate":
+		return "generate"
+	case "g":
+		return "generate"
+	case "decrypt":
+		return "decrypt"
+	case "d":
+		return "decrypt"
+	case "encrypt":
+		return "encrypt"
+	case "e":
+		return "encrypt"
+
+	default:
+		panic("Invalid operation: " + operation)
+	}
 }
 
 func main() {
