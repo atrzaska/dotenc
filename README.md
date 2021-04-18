@@ -96,6 +96,12 @@ Example content of decrypted `.env.production` file:
     FOO=bar
     export ENV=production
 
+### Loading decrypted env vars into shell
+
+To load decrypted env vars into shell you can just eval decrypt output.
+
+    eval $(dotenc d production)
+
 ### Executing Commands
 
 Dotenc also provides a way to decrypt and load env files to execute any command.
