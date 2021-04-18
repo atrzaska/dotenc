@@ -10,7 +10,7 @@ dotenc works on dotenv files while ejson works on json files.
 
 ## Help
 
-If you run dotenc without any arguments it will print a help file with the usage.
+If you run dotenc without any arguments it will print help message with the usage instructions.
 
     Dotenc is a small library to manage encrypted secrets using asymetric encryption
 
