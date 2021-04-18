@@ -13,7 +13,7 @@ import (
 )
 
 const KEY_MAP_FILE = ".dotenc"
-const PUBLIC_KEY_PREFIX = "# public_key: "
+const PUBLIC_KEY_PREFIX = "_PUBLIC_KEY="
 const KEY_MAP_SEPARATOR = ": "
 const PUBLIC_KEY_SIZE = 32 * 2
 
@@ -107,7 +107,9 @@ func writeFile(buffer bytes.Buffer) {
 }
 
 func isParsable(line string) bool {
-	return strings.Contains(line, "=") && !strings.HasPrefix(line, "#")
+	return strings.Contains(line, "=") &&
+		!strings.HasPrefix(line, "#") &&
+		!strings.HasPrefix(line, PUBLIC_KEY_PREFIX)
 }
 
 func isNotLastLine(i int, lines []string) bool {
@@ -225,7 +227,7 @@ func generateKeyPair() {
 	fmt.Println("Private key: " + kp.PrivateString())
 	fmt.Println()
 	fmt.Println("Add this line on top of your dotfile:")
-	fmt.Println("# public_key: " + kp.PublicString())
+	fmt.Println(PUBLIC_KEY_PREFIX + kp.PublicString())
 	fmt.Println()
 	fmt.Println("Add this line to your .dotenc file:")
 	fmt.Println(kp.PublicString() + ": " + kp.PrivateString())

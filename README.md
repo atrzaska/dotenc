@@ -42,7 +42,7 @@ Example of generated output:
     Private key: e2e4274ca2dc5386213adc2fc62d87a2a5c38afa4ab949a49726d7ebcf0c75dc
 
     Add this line on top of your dotfile:
-    # public_key: 851d1baf941bfe98a54c87790a74ea1a87b068c8d535ca7969f229cd996e2d7c
+    _PUBLIC_KEY=851d1baf941bfe98a54c87790a74ea1a87b068c8d535ca7969f229cd996e2d7c
 
     Add this line to your .dotenc file:
     851d1baf941bfe98a54c87790a74ea1a87b068c8d535ca7969f229cd996e2d7c: e2e4274ca2dc5386213adc2fc62d87a2a5c38afa4ab949a49726d7ebcf0c75dc
@@ -52,7 +52,7 @@ Example of generated output:
 
 Add generated public key to top of your env file. Example:
 
-    # public_key: 851d1baf941bfe98a54c87790a74ea1a87b068c8d535ca7969f229cd996e2d7c
+    _PUBLIC_KEY=851d1baf941bfe98a54c87790a74ea1a87b068c8d535ca7969f229cd996e2d7c
 
 Add private key to `.dotenc` file. Example:
 
