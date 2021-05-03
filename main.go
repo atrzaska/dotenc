@@ -25,8 +25,8 @@ func check(e error) {
 
 func readKeyMap() map[string]string {
 	data, err := ioutil.ReadFile(KEY_MAP_FILE)
-	dataContent := string(data)
 	check(err)
+	dataContent := string(data)
 
 	results := make(map[string]string)
 	lines := strings.Split(dataContent, "\n")
@@ -77,7 +77,7 @@ func readPublicKey() string {
 	header := lines[0]
 
 	if !strings.HasPrefix(header, PUBLIC_KEY_PREFIX) {
-		panic("Public key comment not found at top of the env file ")
+		panic("Public key not found at top of the env file ")
 	}
 
 	publicKey := strings.Replace(header, PUBLIC_KEY_PREFIX, "", 1)
@@ -167,9 +167,14 @@ func decryptEnvToString() string {
 
 		if isParsable(line) {
 			key, value := splitEnvLine(line)
-			decryptedValue, err := decrypter.Decrypt([]byte(value))
-			check(err)
-			result = key + "=" + string(decryptedValue)
+			message := []byte(value)
+			if crypto.IsBoxedMessage(message) {
+				decryptedValue, err := decrypter.Decrypt(message)
+				check(err)
+				result = key + "=" + string(decryptedValue)
+			} else {
+				result = key + "=" + value
+			}
 		} else {
 			result = line
 		}
@@ -275,7 +280,7 @@ func execCommand() int {
 	command := getExecCommand()
 	loadEnv()
 	cmd := exec.Command("sh", "-c", command)
-  cmd.Stdin = os.Stdin
+	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	err := cmd.Run()
